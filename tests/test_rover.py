@@ -41,14 +41,22 @@ def test_rover_move_forward():
 
 def test_rover_move_backward():
     rover = Rover()
-    # Face North, move backward
-    rover.execute('B')
-    assert rover.position == (0, 9)  # Wraps to bottom of grid
-    
     # Face East, move backward
-    rover.execute('R')  # now facing East
+    rover.execute('R')  # face East
     rover.execute('B')
-    assert rover.position == (9, 9)  # Wraps to left edge
+    assert rover.position == (9, 0)  # Wraps horizontally only
+    
+    # Return to start
+    rover.execute('F')
+    assert rover.position == (0, 0)
+    
+    # Face North, move backward through South pole
+    rover.execute('L')  # face North
+    rover.execute('B' * 10)  # Move through South pole
+    # Position should be on the opposite longitude, at the bottom of the sphere
+    assert rover.position == (5, 9)  
+    # Orientation flips when crossing pole
+    assert rover.orientation == 'S'
 
 def test_rover_complex_movement():
     rover = Rover()
@@ -91,11 +99,11 @@ def test_rover_turn_move_turn():
 
 def test_rover_wrap_around_north():
     rover = Rover()
-    # Move forward 10 times facing north
+    # Move forward through North pole
     rover.execute('F' * 10)
-    # Should wrap back to starting y position
-    assert rover.position == (0, 0)
-    assert rover.orientation == 'N'
+    # Should appear on opposite side facing South
+    assert rover.position == (5, 9)
+    assert rover.orientation == 'S'
 
 def test_rover_wrap_around_east():
     rover = Rover()
@@ -103,20 +111,76 @@ def test_rover_wrap_around_east():
     rover.execute('R' + 'F' * 12)
     # Should wrap to x=2 (as 12 % 10 = 2)
     assert rover.position == (2, 0)
-    assert rover.orientation == 'E'
+    assert rover.orientation == 'E'  # Direction unchanged for E/W wrapping
 
-def test_rover_wrap_around_negative():
+def test_rover_wrap_around_poles():
     rover = Rover()
-    # Move backward 3 times while facing north (equivalent to going south)
-    rover.execute('B' * 3)
-    # Should wrap to y=7 (as -3 % 10 = 7)
-    assert rover.position == (0, 7)
+    # Move through North pole, then South pole
+    rover.execute('F' * 20)
+    # Should be back at original position with original orientation
+    assert rover.position == (0, 0)
     assert rover.orientation == 'N'
 
 def test_rover_wrap_around_diagonal():
     rover = Rover()
-    # Move diagonally across the grid with wrapping
-    rover.execute('F' * 15 + 'R' + 'F' * 15)
-    # Should be at (5, 5) after wrapping both coordinates
-    assert rover.position == (5, 5)
-    assert rover.orientation == 'E'
+    # Move North until crossing pole
+    rover.execute('F' * 10)
+    # After crossing North pole, should be at longitude 5, facing South
+    assert rover.position == (5, 9)
+    assert rover.orientation == 'S'
+    
+    # Continue moving "North" (now South from other side) for 5 more steps
+    rover.execute('F' * 5)
+    # Should have moved 5 steps down from top
+    assert rover.position == (5, 4)
+    assert rover.orientation == 'S'
+    
+    # Turn right to face West and move
+    rover.execute('R' + 'F' * 15)
+    # Position should stay at same y, x should wrap normally
+    assert rover.position == (5, 4)
+    assert rover.orientation == 'W'
+
+def test_rover_cross_north_pole():
+    rover = Rover()
+    # Start at (2,0) facing North
+    rover.execute('R' + 'F' * 2 + 'L')  # Move to (2,0)
+    assert rover.position == (2, 0)
+    assert rover.orientation == 'N'
+    
+    # Move across North pole
+    rover.execute('F' * 10)
+    # Should appear on opposite longitude (2 + 5 = 7), at the top of the sphere
+    assert rover.position == (7, 9)
+    assert rover.orientation == 'S'
+
+def test_rover_cross_south_pole():
+    rover = Rover()
+    # Start at (3,0) facing South
+    rover.execute('R' + 'F' * 3 + 'R')  # Move to (3,0)
+    assert rover.position == (3, 0)
+    assert rover.orientation == 'S'
+    
+    # Move across South pole
+    rover.execute('F' * 10)
+    # Should appear on opposite longitude (3 + 5 = 8), at the bottom of the sphere
+    assert rover.position == (8, 9)
+    assert rover.orientation == 'N'
+
+def test_rover_pole_crossing_multiple():
+    rover = Rover()
+    # Cross pole multiple times
+    rover.execute('F' * 20)  # Cross North pole twice
+    # Should be back at original longitude, facing original direction
+    assert rover.position[0] == 0  # Same x coordinate
+    assert rover.orientation == 'N'
+
+def test_rover_backward_pole_crossing():
+    rover = Rover()
+    # Move to (4,0) facing North
+    rover.execute('R' + 'F' * 4 + 'L')
+    # Cross pole backward
+    rover.execute('B' * 10)
+    # Should appear on opposite longitude (4 + 5 = 9), at the bottom of the sphere
+    assert rover.position == (9, 9)
+    assert rover.orientation == 'S'
