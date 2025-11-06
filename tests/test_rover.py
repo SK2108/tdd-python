@@ -75,3 +75,17 @@ def test_rover_double_forward():
     rover.execute('FF')
     assert rover.position == (0, 2)
     assert rover.orientation == 'N'  # Orientation should remain North
+
+def test_rover_turn_move_turn():
+    rover = Rover()
+    # Starting at (0,0) facing North
+    assert rover.position == (0, 0)
+    assert rover.orientation == 'N'
+    
+    # Execute RFR: turn right, move forward, turn right
+    rover.execute('RFR')
+    
+    # Should be at (1,0) facing South
+    assert rover.position == (1, 0)
+    assert rover.orientation == 'S'
+    
